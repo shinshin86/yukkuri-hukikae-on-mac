@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Yukkuri hukikae on mac</title>
+  </head>
+
+  <body>
+    <style>
+      /**
+       * Reference: https://saruwakakun.com/html-css/reference/speech-bubble
+       */
+      .balloon {
+        margin: 1.5em 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .balloon .avatar {
+        float: left;
+        margin-right: -90px;
+        width: 150px;
+        z-index: 1;
+      }
+
+      .balloon .avatar img {
+        width: 100%;
+        height: auto;
+        border: solid 3px #d7ebfe;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .balloon .chatting {
+        width: 100%;
+      }
+
+      .balloon-popup {
+        display: none;
+        width: 500px;
+        position: absolute;
+        top: -16px;
+        left: 50px;
+        padding: 8px 16px;
+        border-radius: 4px;
+        background: #06b97d;
+        color: #eee;
+        font-weight: bold;
+      }
+
+      .balloon-popup:after {
+        position: absolute;
+        width: 0;
+        height: 0;
+        left: 0;
+        bottom: -18px;
+        margin-left: 12px;
+        border: solid transparent;
+        border-color: rgba(51, 204, 153, 0);
+        border-top-color: #06b97d;
+        border-width: 8px;
+        pointer-events: none;
+        content: " ";
+      }
+
+      .avatar:hover + .balloon-popup {
+        display: block;
+        z-index: 1;
+      }
+
+      .says {
+        display: inline-block;
+        position: relative;
+        margin: 50px 20px 40px 115px;
+        padding: 17px 13px;
+        border-radius: 12px;
+        background: #d7ebfe;
+        min-width: 600px;
+        height: 75px;
+      }
+
+      .says:after {
+        content: "";
+        display: inline-block;
+        position: absolute;
+        top: 18px;
+        left: -24px;
+        border: 12px solid transparent;
+        border-right: 12px solid #d7ebfe;
+      }
+
+      .says p {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <div>
+      <div class="balloon">
+        <div class="avatar">
+          <label for="avatarSelect">
+            <img id="avatarImage" src="avatar.png" alt="avatar image" />
+          </label>
+          <input
+            id="avatarSelect"
+            type="file"
+            accept="image/*"
+            style="display: none"
+            onChange="setAvatarImage(event);"
+          />
+        </div>
+        <p class="balloon-popup">
+          設定した画像はサーバには保存されません。<br />また、画像のサイズは縦横を一致させるようにしてください。<br />(画像のサイズ例:
+          150px × 150px)
+        </p>
+        <div class="chatting">
+          <div class="says">
+            <p id="output"></p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p>
+          ゆっくりの声のタイプを変更できます(デフォルトは【F1
+          女声1(新ゆっくり)】です)
+        </p>
+        <form name="voiceTypeForm">
+          <div>
+            <input
+              type="radio"
+              id="aq10_F1"
+              name="voiceType"
+              value="aq10_F1"
+              checked
+            />
+            <label for="aq10_F1">F1 女声1(新ゆっくり)</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_F2" name="voiceType" value="aq10_F2" />
+            <label for="aq10_F2">F2 女声2</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_F3" name="voiceType" value="aq10_F3" />
+            <label for="aq10_F3">F3 女声3</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_M1" name="voiceType" value="aq10_M1" />
+            <label for="aq10_M1">M1 男声1</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_M2" name="voiceType" value="aq10_M2" />
+            <label for="aq10_M2">M2 男声2</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_R1" name="voiceType" value="aq10_R1" />
+            <label for="aq10_R1">R1 ロボット</label>
+          </div>
+          <div>
+            <input type="radio" id="aq10_R2" name="voiceType" value="aq10_R2" />
+            <label for="aq10_R2">R2 ロボット2</label>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+      const output = document.getElementById("output");
+      const recognition = new webkitSpeechRecognition();
+      let voiceText = "";
+
+      // setting recognition
+      recognition.interimResults = true;
+      recognition.continuous = true;
+      recognition.lang = "ja";
+
+      recognition.onresult = function ({ results }) {
+        const voiceType = document.voiceTypeForm.voiceType.value;
+
+        const latestItemIndex = results.length - 1;
+        if (results[latestItemIndex].isFinal) {
+          const text = results[latestItemIndex][0].transcript;
+          output.innerHTML = '<p style="font-size: 50px">' + text + "</p>";
+
+          // Preventing text from being inserted in succession
+          if (Date.now() - accessAt > 1000 && text !== voiceText) {
+            voiceText = text;
+            accessAt = Date.now();
+
+            /**
+             * Access to talk api
+             *
+             * NOTE:
+             * Preventing text from being inserted in succession
+             */
+
+            fetch(
+              `http://localhost:3000/talk?text=${text}&voiceType=${voiceType}`
+            )
+              .then((r) => console.log(r))
+              .catch((e) => console.error(e));
+          }
+        }
+      };
+
+      recognition.onend = () => recognition.start();
+
+      recognition.onerror = () =>
+        (output.innerHTML = '<p style="font-size: 50px">Error</p>');
+
+      window.addEventListener("load", () => {
+        accessAt = Date.now();
+        recognition.start();
+      });
+
+      // set avatar image
+      const setAvatarImage = (event) => {
+        const file = event.target.files[0];
+        const blobUrl = window.URL.createObjectURL(file);
+        const img = document.getElementById("avatarImage");
+        img.src = blobUrl;
+      };
+    </script>
+  </body>
+</html>
